@@ -11,13 +11,14 @@ import 'screens/estimate_preview_screen.dart';
 import 'screens/nearby_shops_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/search_results_screen.dart';
 import 'widgets/custom_search_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Initialize Firebase (assumes google-services.json / GoogleService-Info.plist are present)
   await Firebase.initializeApp();
-  
+
   runApp(
     MultiProvider(
       providers: [
@@ -73,7 +74,7 @@ class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
-    
+
     return StreamBuilder<User?>(
       stream: authService.user,
       builder: (context, snapshot) {
@@ -110,6 +111,8 @@ class _MainLayoutState extends State<MainLayout> {
     const NearbyShopsScreen(),
     const SettingsScreen(),
   ];
+
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
@@ -172,8 +175,9 @@ class _MainLayoutState extends State<MainLayout> {
                 const SizedBox(height: 12),
                 CustomSearchBar(
                   onSearch: (value) {
-                    // Logic to handle search across shops
-                    debugPrint('Searching for: $value');
+                    setState(() {
+                      _searchQuery = value;
+                    });
                   },
                 ),
               ],
@@ -199,7 +203,9 @@ class _MainLayoutState extends State<MainLayout> {
           ),
         ),
       ),
-      body: _screens[_currentIndex],
+      body: _searchQuery.isEmpty
+          ? _screens[_currentIndex]
+          : SearchResultsScreen(query: _searchQuery),
     );
   }
 
