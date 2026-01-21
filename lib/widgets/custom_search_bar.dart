@@ -3,8 +3,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 class CustomSearchBar extends StatefulWidget {
   final Function(String)? onSearch;
+  final Function(String)? onSubmitted;
 
-  const CustomSearchBar({super.key, this.onSearch});
+  const CustomSearchBar({super.key, this.onSearch, this.onSubmitted});
 
   @override
   State<CustomSearchBar> createState() => _CustomSearchBarState();
@@ -43,6 +44,7 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
           }
           setState(() {});
         },
+        onSubmitted: widget.onSubmitted,
         decoration: InputDecoration(
           hintText: '정비소, 서비스 검색...',
           hintStyle: TextStyle(color: Theme.of(context).hintColor),

@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'providers/theme_provider.dart';
 import 'services/auth_service.dart';
+import 'services/service_center_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/estimate_preview_screen.dart';
 import 'screens/nearby_shops_screen.dart';
@@ -24,6 +25,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         Provider<AuthService>(create: (_) => AuthService()),
+        Provider<ServiceCenterService>(create: (_) => ServiceCenterService()),
       ],
       child: const MyApp(),
     ),
@@ -112,8 +114,6 @@ class _MainLayoutState extends State<MainLayout> {
     const SettingsScreen(),
   ];
 
-  String _searchQuery = '';
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -174,10 +174,16 @@ class _MainLayoutState extends State<MainLayout> {
                 ),
                 const SizedBox(height: 12),
                 CustomSearchBar(
-                  onSearch: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
+                  onSubmitted: (value) {
+                    if (value.isNotEmpty) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              SearchResultsScreen(query: value),
+                        ),
+                      );
+                    }
                   },
                 ),
               ],
@@ -203,9 +209,7 @@ class _MainLayoutState extends State<MainLayout> {
           ),
         ),
       ),
-      body: _searchQuery.isEmpty
-          ? _screens[_currentIndex]
-          : SearchResultsScreen(query: _searchQuery),
+      body: _screens[_currentIndex],
     );
   }
 
