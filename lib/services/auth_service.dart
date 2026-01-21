@@ -8,13 +8,14 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   // 1. 사용자의 로그인 상태를 알려주는 스트림 (main.dart의 에러 해결)
-  Stream<User?> get user => _auth.authStateChanges().asyncMap((firebaseUser) async {
-    if (firebaseUser != null) {
-      // 사용자 로그인 시 log 문서 생성 확인
-      await _createLogDocumentIfNeeded(firebaseUser);
-    }
-    return firebaseUser;
-  });
+  Stream<User?> get user =>
+      _auth.authStateChanges().asyncMap((firebaseUser) async {
+        if (firebaseUser != null) {
+          // 사용자 로그인 시 최초 방문 여부 확인 및 데이터 저장
+          await _initializeUserDataIfNeeded(firebaseUser);
+        }
+        return firebaseUser;
+      });
 
   // 2. 구글 로그인 로직
   Future<User?> signInWithGoogle() async {
@@ -23,14 +24,14 @@ class AuthService {
       final currentUser = _auth.currentUser;
       if (currentUser != null) {
         debugPrint("User already logged in: ${currentUser.uid}");
-        // log 컬렉션에 문서가 없으면 생성
-        await _createLogDocumentIfNeeded(currentUser);
+        // 최초 방문 여부 확인 및 데이터 저장
+        await _initializeUserDataIfNeeded(currentUser);
         return currentUser;
       }
 
       // 구글 로그인
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      
+
       if (googleUser == null) {
         debugPrint("Google Sign-In cancelled by user");
         return null;
@@ -51,59 +52,53 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
 
-      if (userCredential.user == null) {
-        debugPrint("Google Sign-In Error: User is null");
-        return null;
+      if (userCredential.user != null) {
+        // 로그인 성공 후 최초 데이터 저장 로직 호출
+        await _initializeUserDataIfNeeded(userCredential.user!);
+        return userCredential.user;
       }
 
-      // 로그인 성공 후 Firestore에 사용자 데이터 저장
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .set({
-            'uid': userCredential.user!.uid,
-            'email': userCredential.user!.email,
-            'displayName': userCredential.user!.displayName,
-            'photoURL': userCredential.user!.photoURL,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-
-      // log 컬렉션에 문서 생성
-      await _createLogDocumentIfNeeded(userCredential.user!);
-
-      return userCredential.user;
+      return null;
     } catch (e) {
       debugPrint("Google Sign-In Error: $e");
+      // 플러그인 에러가 나더라도 Firebase Auth에 이미 로그인이 되었다면 해당 유저 반환
+      final currentUser = _auth.currentUser;
+      if (currentUser != null) {
+        await _initializeUserDataIfNeeded(currentUser);
+        return currentUser;
+      }
       return null;
     }
   }
 
-  // Firestore log 컬렉션에 문서 생성 (첫 로그인 시에만)
-  Future<void> _createLogDocumentIfNeeded(User user) async {
+  // Firestore에 유저 정보가 없을 때만 저장 (최초 1회)
+  Future<void> _initializeUserDataIfNeeded(User user) async {
     try {
-      final logRef = FirebaseFirestore.instance
-          .collection('log')
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
           .doc(user.uid);
 
-      final logSnapshot = await logRef.get();
+      final userSnapshot = await userRef.get();
 
-      if (!logSnapshot.exists) {
-        await logRef.set({
+      // users 컬렉션에 문서가 없으면 최초 로그인으로 판단
+      if (!userSnapshot.exists) {
+        await userRef.set({
           'uid': user.uid,
           'email': user.email,
           'displayName': user.displayName,
           'photoURL': user.photoURL,
-          'provider': 'google',
           'createdAt': FieldValue.serverTimestamp(),
         });
-        debugPrint("Log document created successfully for uid: ${user.uid}");
+        debugPrint("New user data saved to 'users' for uid: ${user.uid}");
       } else {
-        debugPrint("Log document already exists for uid: ${user.uid}");
+        debugPrint("User data already exists for uid: ${user.uid}");
       }
     } catch (e) {
-      debugPrint("Error creating log document: $e");
+      debugPrint("Error initializing user data: $e");
     }
   }
 
