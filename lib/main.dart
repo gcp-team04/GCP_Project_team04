@@ -5,6 +5,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'providers/theme_provider.dart';
+import 'providers/shop_provider.dart';
+import 'providers/estimate_provider.dart';
 import 'services/auth_service.dart';
 import 'services/service_center_service.dart';
 import 'screens/home_screen.dart';
@@ -24,6 +26,8 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => ShopProvider()),
+        ChangeNotifierProvider(create: (_) => EstimateProvider()..initialize()),
         Provider<AuthService>(create: (_) => AuthService()),
         Provider<ServiceCenterService>(create: (_) => ServiceCenterService()),
       ],
@@ -106,6 +110,15 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // 앱 시작 시 백그라운드에서 정비소 정보를 미리 가져옴 (Pre-fetching)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ShopProvider>(context, listen: false).initialize();
+    });
+  }
 
   final List<Widget> _screens = [
     const HomeScreen(),
@@ -209,7 +222,7 @@ class _MainLayoutState extends State<MainLayout> {
           ),
         ),
       ),
-      body: _screens[_currentIndex],
+      body: IndexedStack(index: _currentIndex, children: _screens),
     );
   }
 
