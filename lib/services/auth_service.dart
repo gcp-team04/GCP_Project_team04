@@ -91,6 +91,7 @@ class AuthService {
           'email': user.email,
           'displayName': user.displayName,
           'photoURL': user.photoURL,
+          'upload_counters': 0,
           'createdAt': FieldValue.serverTimestamp(),
         });
         debugPrint("New user data saved to 'users' for uid: ${user.uid}");

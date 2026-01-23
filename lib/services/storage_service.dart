@@ -48,23 +48,23 @@ class StorageService {
       final dateString =
           '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
 
-      // 카운터 문서 ID
-      final counterDocId = '${uid}_${dateString}';
-
-      // 트랜잭션으로 카운터 증가
-      final counterRef = _firestore
-          .collection('upload_counters')
-          .doc(counterDocId);
+      // 트랜잭션으로 유저 문서 내 upload_counters 필드 증가
+      final userRef = _firestore.collection('users').doc(uid);
       int sequenceNumber = 1;
+
       await _firestore.runTransaction((transaction) async {
-        final snapshot = await transaction.get(counterRef);
+        final snapshot = await transaction.get(userRef);
         if (snapshot.exists) {
-          final currentCount = snapshot.data()?['count'] as int? ?? 0;
+          final data = snapshot.data();
+          final currentCount = data?['upload_counters'] as int? ?? 0;
           sequenceNumber = currentCount + 1;
-          transaction.update(counterRef, {'count': sequenceNumber});
+          transaction.update(userRef, {'upload_counters': sequenceNumber});
         } else {
+          // 문서가 없는 경우(드문 경우) 생성 및 초기화
           sequenceNumber = 1;
-          transaction.set(counterRef, {'count': sequenceNumber});
+          transaction.set(userRef, {
+            'upload_counters': sequenceNumber,
+          }, SetOptions(merge: true));
         }
       });
 
