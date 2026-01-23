@@ -227,6 +227,26 @@ class _NearbyShopsScreenState extends State<NearbyShopsScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(LucideIcons.star, size: 12, color: Colors.amber),
+                    const SizedBox(width: 4),
+                    Text(
+                      shop.rating.toString(),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '리뷰 ${shop.reviewCount}',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
