@@ -45,13 +45,16 @@ class StorageService {
       // uid와 날짜 문자열 생성
       final uid = user.uid;
       final now = DateTime.now();
-      final dateString = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final dateString =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
 
       // 카운터 문서 ID
       final counterDocId = '${uid}_${dateString}';
 
       // 트랜잭션으로 카운터 증가
-      final counterRef = _firestore.collection('upload_counters').doc(counterDocId);
+      final counterRef = _firestore
+          .collection('upload_counters')
+          .doc(counterDocId);
       int sequenceNumber = 1;
       await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(counterRef);
@@ -85,22 +88,23 @@ class StorageService {
       );
 
       // 3. 파일 업로드
-      await ref.putFile(fileToUpload, metadata);
-
-      // 4. URL 미리 구성 (API 호출 제거로 속도 개선)
-      final downloadUrl = 'https://firebasestorage.googleapis.com/v0/b/'
-          '${_storage.bucket}/o/crashed_car_picture%2F$fileName.jpg'
-          '?alt=media';
+      final TaskSnapshot uploadTask = await ref.putFile(fileToUpload, metadata);
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
 
       // 5. Firestore에 estimate_history 서브컬렉션에 문서 추가
-      await _firestore.collection('users').doc(uid).collection('estimate_history').doc('$fileName.jpg').set({
-        'createdAt': now.toIso8601String(),
-        'estimateCost': null,
-        'imageUploadUrl': null,
-        'imageDamageUrl': null,
-        'imageDamagePartUrl': null,
-        'note': null,
-      });
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('estimate_history')
+          .doc('$fileName.jpg')
+          .set({
+            'createdAt': FieldValue.serverTimestamp(),
+            'estimateCost': null,
+            'imageUploadUrl': downloadUrl,
+            'imageDamageUrl': null,
+            'imageDamagePartUrl': null,
+            'note': null,
+          });
 
       return downloadUrl;
     } catch (e) {
