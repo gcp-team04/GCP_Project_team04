@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -13,12 +14,95 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  XFile? _image;
   String? _imageUrl;
   bool _isAnalyzing = false;
   bool _isUploading = false;
   Map<String, dynamic>? _result;
   final StorageService _storageService = StorageService();
+  StreamSubscription? _subscription;
+
+  // [추가] 업로드 시작 시간을 기록하여 과거 데이터 필터링
+  DateTime? _uploadStartTime;
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  void _listenForAnalysisResult() {
+    // 기존 구독 취소
+    _subscription?.cancel();
+
+    // damage_analyses 컬렉션에서 전체 사용자 중 가장 최신 문서를 감시
+    // (테스트 시 userId가 "anonymous"인 경우를 대비해 필터를 풀고 가장 최근 것 1개를 가져옵니다)
+    _subscription = FirebaseFirestore.instance
+        .collection('damage_analyses')
+        .orderBy('timestamp', descending: true)
+        .limit(1)
+        .snapshots()
+        .listen((snapshot) {
+          if (snapshot.docs.isNotEmpty) {
+            final doc = snapshot.docs.first;
+            final data = doc.data();
+
+            // 문서 생성 시간 확인 (업로드 시작 이후 데이터인지 확인하여 이전 결과가 뜨지 않게 함)
+            DateTime docTime;
+            try {
+              if (data['timestamp'] is Timestamp) {
+                docTime = (data['timestamp'] as Timestamp).toDate();
+              } else if (data['timestamp'] is String) {
+                docTime = DateTime.parse(data['timestamp']);
+              } else {
+                return;
+              }
+            } catch (e) {
+              return;
+            }
+
+            if (_uploadStartTime != null &&
+                docTime.isBefore(_uploadStartTime!)) {
+              debugPrint("과거 데이터 무시함");
+              return;
+            }
+
+            // 서버에서 저장한 필드명이 존재하는지 확인
+            if (data.containsKey('damageImageUrl') &&
+                data.containsKey('totalCost')) {
+              _subscription?.cancel();
+              _subscription = null;
+
+              if (mounted) {
+                setState(() {
+                  _isAnalyzing = false;
+
+                  // 가격 포맷팅 (숫자인 경우와 문자열인 경우 모두 대응)
+                  final rawCost = data['totalCost'];
+                  String formattedPrice = '';
+                  if (rawCost is num) {
+                    formattedPrice =
+                        '₩${rawCost.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]},")}';
+                  } else {
+                    formattedPrice = '₩${rawCost.toString()}';
+                  }
+
+                  // 화면에 띄울 결과 데이터 구성
+                  _result = {
+                    'damage': data['carModelApplied'] ?? '차량 손상 분석',
+                    'estimatedPrice': formattedPrice,
+                    'analyzedImageUrl': data['damageImageUrl'], // AI 서버가 저장한 필드
+                    'recommendations': [
+                      '손상 부위 정밀 점검 필요',
+                      '주변 부위 도장 상태 확인',
+                      '견적서 세부 내역 확인 요망',
+                    ],
+                  };
+                });
+              }
+            }
+          }
+        });
+  }
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
@@ -26,36 +110,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (image != null) {
       setState(() {
-        _image = image;
         _isUploading = true;
         _result = null;
         _imageUrl = null;
+        // [추가] 업로드 시작 시점 기록 (약간의 오차 보정을 위해 5초 정도 뺌)
+        _uploadStartTime = DateTime.now().subtract(const Duration(seconds: 5));
       });
 
       // 사진 업로드
       try {
         final imageUrl = await _storageService.uploadCrashedCarPicture(image);
+        if (!mounted) return;
         setState(() {
           _imageUrl = imageUrl;
           _isUploading = false;
           _isAnalyzing = true;
         });
 
-        // Simulate AI analysis delay
-        await Future.delayed(const Duration(seconds: 2));
-
-        setState(() {
-          _isAnalyzing = false;
-          _result = {
-            'damage': '전면 범퍼 파손 (Scratched Bumper)',
-            'confidence': '98.5%',
-            'estimatedPrice': '₩250,000 - ₩350,000',
-            'recommendations': ['범퍼 도색', '범퍼 교환 불필요', '기타 흠집 제거'],
-          };
-        });
+        // Firestore 실시간 리스너 시작
+        _listenForAnalysisResult();
       } catch (e) {
+        if (!mounted) return;
         setState(() {
           _isUploading = false;
+          _isAnalyzing = false;
         });
         ScaffoldMessenger.of(
           context,
@@ -78,11 +156,14 @@ class _HomeScreenState extends State<HomeScreen> {
             'estimatedPrice': _result!['estimatedPrice'],
             'recommendations': _result!['recommendations'],
             'date': DateTime.now().toIso8601String(),
+            if (_imageUrl != null) 'imageUrl': _imageUrl,
           });
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('견적이 저장되었습니다.')));
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
@@ -232,6 +313,29 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
+                    if (_result!['analyzedImageUrl'] != null) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          _result!['analyzedImageUrl'],
+                          width: double.infinity,
+                          height: 200,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: double.infinity,
+                              height: 200,
+                              color: Colors.grey[200],
+                              child: const Icon(
+                                Icons.image_not_supported,
+                                color: Colors.grey,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                     const Text(
                       '분석 결과',
                       style: TextStyle(color: Colors.grey, fontSize: 14),

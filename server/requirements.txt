@@ -2,3 +2,4 @@ functions-framework==3.*
 google-cloud-storage
 requests
 google-auth
+google-cloud-firestore
