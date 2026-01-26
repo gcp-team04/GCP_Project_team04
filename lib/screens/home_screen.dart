@@ -104,9 +104,64 @@ class _HomeScreenState extends State<HomeScreen> {
                     formattedPrice = rawCost.toString();
                   }
 
+                  // 손상 부위 및 유형 추출 (details 필드 활용 및 한글 변환)
+                  String damageDescription = '차량 손상 분석';
+                  if (data['details'] != null &&
+                      data['details'] is List &&
+                      (data['details'] as List).isNotEmpty) {
+                    final firstDetail = (data['details'] as List).first;
+                    final rawPart = firstDetail['part'] ?? '';
+                    final rawDamage = firstDetail['damage'] ?? '';
+
+                    // 부품 명칭 한글 매핑
+                    final partMap = {
+                      'Front bumper': '앞 범퍼',
+                      'Rear bumper': '뒷 범퍼',
+                      'Bonnet': '보닛 (본네트)',
+                      'Trunk lid': '트렁크 리드 (트렁크 문)',
+                      'Front fender(R)': '앞 펜더 (오른쪽)',
+                      'Front fender(L)': '앞 펜더 (왼쪽)',
+                      'Rear fender(R)': '뒤 펜더 (오른쪽)',
+                      'Rear fender(L)': '뒤 펜더 (왼쪽)',
+                      'Front door(R)': '앞 문 (오른쪽)',
+                      'Front door(L)': '앞 문 (왼쪽)',
+                      'Rear door(R)': '뒷 문 (오른쪽)',
+                      'Rear door(L)': '뒷 문 (왼쪽)',
+                      'Side mirror(R)': '사이드 미러 (오른쪽)',
+                      'Side mirror(L)': '사이드 미러 (왼쪽)',
+                      'Head lights(R)': '헤드라이트 (오른쪽)',
+                      'Head lights(L)': '헤드라이트 (왼쪽)',
+                      'Front Wheel(R)': '앞 바퀴/휠 (오른쪽)',
+                      'Front Wheel(L)': '앞 바퀴/휠 (왼쪽)',
+                      'Rear Wheel(R)': '뒤 바퀴/휠 (오른쪽)',
+                      'Rear Wheel(L)': '뒤 바퀴/휠 (왼쪽)',
+                      'Rocker panel(R)': '로커 패널/사이드 실 (오른쪽)',
+                      'Rocker panel(L)': '로커 패널/사이드 실 (왼쪽)',
+                      'Windshield': '앞 유리 (윈드실드)',
+                      'Rear windshield': '뒷 유리',
+                    };
+
+                    // 손상 종류 한글 매핑
+                    final damageMap = {
+                      'Scratched': '스크래치',
+                      'Crushed': '찌그러짐',
+                      'Broken': '파손',
+                      'Separated': '이격',
+                    };
+
+                    final part = partMap[rawPart] ?? rawPart;
+                    final damageType = damageMap[rawDamage] ?? rawDamage;
+
+                    if (part.isNotEmpty && damageType.isNotEmpty) {
+                      damageDescription = '$part - $damageType';
+                    } else if (part.isNotEmpty) {
+                      damageDescription = part;
+                    }
+                  }
+
                   // 화면에 띄울 결과 데이터 구성
                   _result = {
-                    'damage': data['carModelApplied'] ?? '차량 손상 분석',
+                    'damage': damageDescription,
                     'estimatedPrice': formattedPrice,
                     'analyzedImageUrl': data['damageImageUrl'], // AI 서버가 저장한 필드
                     'recommendations': [
