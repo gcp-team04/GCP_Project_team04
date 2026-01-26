@@ -76,14 +76,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 setState(() {
                   _isAnalyzing = false;
 
-                  // 가격 포맷팅 (숫자인 경우와 문자열인 경우 모두 대응)
+                  // 가격 포맷팅 (숫자인 경우 하한 10%, 상한 20% 범위 적용)
                   final rawCost = data['totalCost'];
-                  String formattedPrice = '';
+                  num? costNum;
                   if (rawCost is num) {
-                    formattedPrice =
-                        '₩${rawCost.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]},")}';
+                    costNum = rawCost;
+                  } else if (rawCost is String) {
+                    costNum = num.tryParse(
+                      rawCost.replaceAll(RegExp(r'[^0-9]'), ''),
+                    );
+                  }
+
+                  String formattedPrice = '';
+                  if (costNum != null) {
+                    final minCost = (costNum * 0.9).toInt();
+                    final maxCost = (costNum * 1.2).toInt();
+
+                    String format(num n) =>
+                        n.toInt().toString().replaceAllMapped(
+                          RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"),
+                          (Match m) => "${m[1]},",
+                        ) +
+                        '원';
+
+                    formattedPrice = '${format(minCost)} ~ ${format(maxCost)}';
                   } else {
-                    formattedPrice = '₩${rawCost.toString()}';
+                    formattedPrice = rawCost.toString();
                   }
 
                   // 화면에 띄울 결과 데이터 구성
