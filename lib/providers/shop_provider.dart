@@ -46,11 +46,10 @@ class ShopProvider with ChangeNotifier {
         }
       }
 
-      // 2. 위치 확보 (속도 최적화: 마지막 위치 우선)
-      Position? position = await Geolocator.getLastKnownPosition();
-      position ??= await Geolocator.getCurrentPosition(
+      // 2. 현재 위치 확보 (최신 데이터 보장)
+      Position position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.low,
+          accuracy: LocationAccuracy.high,
           timeLimit: Duration(seconds: 5),
         ),
       );
