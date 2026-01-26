@@ -9,6 +9,8 @@ class Estimate {
   final String damage;
   final String price;
   final String status;
+  final String? imageUrl;
+  final String? realPrice;
 
   Estimate({
     required this.id,
@@ -16,6 +18,8 @@ class Estimate {
     required this.damage,
     required this.price,
     required this.status,
+    this.imageUrl,
+    this.realPrice,
   });
 }
 
@@ -61,7 +65,9 @@ class EstimateProvider with ChangeNotifier {
                 date: data['date'] ?? '알 수 없음',
                 damage: data['damage'] ?? '알 수 없음',
                 price: data['estimatedPrice'] ?? '알 수 없음',
-                status: '저장됨',
+                status: data['realPrice'] != null ? '수리 완료' : '저장됨',
+                imageUrl: data['imageUrl'] ?? data['analyzedImageUrl'],
+                realPrice: data['realPrice'],
               );
             }).toList();
 

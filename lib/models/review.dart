@@ -7,6 +7,12 @@ class Review {
   final String comment;
   final DateTime createdAt;
   final String? imageUrl;
+  // 견적 정보 추가
+  final String? estimateId;
+  final String? estimateDamage;
+  final String? estimatePrice;
+  final String? estimateRealPrice;
+  final String? estimateImageUrl;
 
   Review({
     required this.id,
@@ -15,6 +21,11 @@ class Review {
     required this.comment,
     required this.createdAt,
     this.imageUrl,
+    this.estimateId,
+    this.estimateDamage,
+    this.estimatePrice,
+    this.estimateRealPrice,
+    this.estimateImageUrl,
   });
 
   factory Review.fromMap(Map<String, dynamic> map, String docId) {
@@ -25,6 +36,11 @@ class Review {
       comment: map['comment'] ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       imageUrl: map['imageUrl'],
+      estimateId: map['estimateId'],
+      estimateDamage: map['estimateDamage'],
+      estimatePrice: map['estimatePrice'],
+      estimateRealPrice: map['estimateRealPrice'],
+      estimateImageUrl: map['estimateImageUrl'],
     );
   }
 
@@ -35,6 +51,11 @@ class Review {
       'comment': comment,
       'createdAt': FieldValue.serverTimestamp(),
       'imageUrl': imageUrl,
+      'estimateId': estimateId,
+      'estimateDamage': estimateDamage,
+      'estimatePrice': estimatePrice,
+      'estimateRealPrice': estimateRealPrice,
+      'estimateImageUrl': estimateImageUrl,
     };
   }
 }

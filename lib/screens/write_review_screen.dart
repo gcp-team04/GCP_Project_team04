@@ -4,9 +4,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import '../models/service_center.dart';
 import '../services/storage_service.dart';
-import '../models/review.dart'; // Assuming Review model exists
+import '../models/review.dart';
+import '../providers/estimate_provider.dart';
 
 class WriteReviewScreen extends StatefulWidget {
   final ServiceCenter shop;
@@ -23,6 +25,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
   XFile? _image;
   bool _isUploading = false;
   final StorageService _storageService = StorageService();
+  Estimate? _selectedEstimate;
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
@@ -71,6 +74,11 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
         comment: _commentController.text.trim(),
         createdAt: DateTime.now(),
         imageUrl: imageUrl,
+        estimateId: _selectedEstimate?.id,
+        estimateDamage: _selectedEstimate?.damage,
+        estimatePrice: _selectedEstimate?.price,
+        estimateRealPrice: _selectedEstimate?.realPrice,
+        estimateImageUrl: _selectedEstimate?.imageUrl,
       );
 
       final shopRef = FirebaseFirestore.instance
@@ -80,19 +88,11 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
       final reviewsRef = shopRef.collection('reviews');
 
       await FirebaseFirestore.instance.runTransaction((transaction) async {
-        // 1. 정비소 정보 업데이트를 위해 먼저 기존 데이터 읽기 (트랜잭션 규칙: 읽기 우선)
         final shopSnap = await transaction.get(shopRef);
 
-        // 2. 리뷰 추가 (쓰기)
-        // 사용자가 여러 번 방문하여 리뷰를 남길 수 있도록 자동 생성 ID를 사용합니다.
-        // 유저 식별을 위해 데이터 필드에 userId(UID)를 포함합니다.
         final newReviewRef = reviewsRef.doc();
-        transaction.set(newReviewRef, {
-          ...review.toMap(),
-          'userId': user.uid, // 유저 식별을 위한 필드 추가
-        });
+        transaction.set(newReviewRef, {...review.toMap(), 'userId': user.uid});
 
-        // 3. 정비소 정보 업데이트 (평점 및 리뷰 수)
         if (shopSnap.exists) {
           final data = shopSnap.data()!;
           final currentRating = (data['rating'] ?? 0.0).toDouble();
@@ -130,6 +130,96 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
     }
   }
 
+  void _showEstimatePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Consumer<EstimateProvider>(
+          builder: (context, provider, child) {
+            final estimates = provider.estimates;
+
+            return Container(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    '결합할 견적 선택',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  if (estimates.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32),
+                      child: Center(child: Text('저장된 견적이 없습니다.')),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: estimates.length,
+                        itemBuilder: (context, index) {
+                          final est = estimates[index];
+                          final isSelected = _selectedEstimate?.id == est.id;
+
+                          return ListTile(
+                            onTap: () {
+                              setState(() {
+                                _selectedEstimate = isSelected ? null : est;
+                              });
+                              Navigator.pop(context);
+                            },
+                            leading: est.imageUrl != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Image.network(
+                                      est.imageUrl!,
+                                      width: 40,
+                                      height: 40,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
+                                : Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Icon(
+                                      LucideIcons.image,
+                                      size: 20,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                            title: Text(est.damage),
+                            subtitle: Text(
+                              '예상: ${est.price}${est.realPrice != null ? ' / 실제: ${est.realPrice}' : ''}',
+                            ),
+                            trailing: isSelected
+                                ? const Icon(
+                                    Icons.check_circle,
+                                    color: Colors.blueAccent,
+                                  )
+                                : null,
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,7 +239,6 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            // 별점 선택기
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(5, (index) {
@@ -168,6 +257,83 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
               }),
             ),
             const SizedBox(height: 32),
+
+            // 견적 정보 선택 영역 추가
+            const Text(
+              '견적 정보 연결 (선택)',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: _showEstimatePicker,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _selectedEstimate != null
+                      ? Colors.blueAccent.withOpacity(0.05)
+                      : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _selectedEstimate != null
+                        ? Colors.blueAccent
+                        : Colors.grey.shade300,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _selectedEstimate != null
+                          ? LucideIcons.checkCircle
+                          : LucideIcons.fileText,
+                      color: _selectedEstimate != null
+                          ? Colors.blueAccent
+                          : Colors.grey,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _selectedEstimate != null
+                                ? _selectedEstimate!.damage
+                                : '견적 내역에서 가져오기',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: _selectedEstimate != null
+                                  ? Colors.blueAccent
+                                  : Colors.black87,
+                            ),
+                          ),
+                          if (_selectedEstimate != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              '총 ${_selectedEstimate!.realPrice ?? _selectedEstimate!.price}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      LucideIcons.chevronRight,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+
             const Text(
               '리뷰 내용',
               style: TextStyle(
@@ -183,10 +349,6 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
               decoration: InputDecoration(
                 hintText: '작업 내용, 친절도, 가격 등에 대한 후기를 남겨주세요.',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: Colors.grey.shade300),
                 ),
