@@ -147,7 +147,7 @@ class _EstimatePreviewScreenState extends State<EstimatePreviewScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      est.damage,
+                      est.title,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,

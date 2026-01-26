@@ -218,6 +218,38 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _saveEstimate() async {
     if (_result == null) return;
 
+    final TextEditingController titleController = TextEditingController();
+
+    // 다이얼로그로 제목 입력 받기
+    final String? title = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('견적 저장'),
+          content: TextField(
+            controller: titleController,
+            decoration: const InputDecoration(
+              hintText: '견적 제목을 입력하세요 (예: 앞 범퍼 수리)',
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () =>
+                  Navigator.pop(context, titleController.text.trim()),
+              child: const Text('저장'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (title == null || title.isEmpty) return;
+
     try {
       String uid = FirebaseAuth.instance.currentUser!.uid;
       await FirebaseFirestore.instance
@@ -225,6 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .doc(uid)
           .collection('estimates')
           .add({
+            'title': title,
             'damage': _result!['damage'],
             'estimatedPrice': _result!['estimatedPrice'],
             'recommendations': _result!['recommendations'],

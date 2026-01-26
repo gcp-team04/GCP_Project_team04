@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class Estimate {
   final String id;
+  final String title;
   final String date;
   final String damage;
   final String price;
@@ -12,6 +13,7 @@ class Estimate {
 
   Estimate({
     required this.id,
+    required this.title,
     required this.date,
     required this.damage,
     required this.price,
@@ -58,6 +60,7 @@ class EstimateProvider with ChangeNotifier {
               final data = doc.data();
               return Estimate(
                 id: doc.id,
+                title: data['title'] ?? data['damage'] ?? '알 수 없음',
                 date: data['date'] ?? '알 수 없음',
                 damage: data['damage'] ?? '알 수 없음',
                 price: data['estimatedPrice'] ?? '알 수 없음',
