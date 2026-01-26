@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'providers/theme_provider.dart';
 import 'providers/shop_provider.dart';
 import 'providers/estimate_provider.dart';
@@ -21,6 +22,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Initialize Firebase (assumes google-services.json / GoogleService-Info.plist are present)
   await Firebase.initializeApp();
+
+  // Initialize App Check
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: AndroidProvider.debug,
+    appleProvider: AppleProvider.debug,
+  );
 
   runApp(
     MultiProvider(
