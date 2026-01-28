@@ -111,6 +111,40 @@ class EstimateProvider with ChangeNotifier {
     }
   }
 
+  Future<void> sendEstimateToNearbyShops({
+    required Estimate estimate,
+    required List<dynamic> shops,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('로그인이 필요합니다.');
+
+    final batch = FirebaseFirestore.instance.batch();
+
+    // 상위 10개 정비소 선택
+    final targetShops = shops.take(10).toList();
+
+    for (var shop in targetShops) {
+      final ref = FirebaseFirestore.instance
+          .collection('service_centers')
+          .doc(shop.id)
+          .collection('receive_estimate')
+          .doc();
+
+      batch.set(ref, {
+        'imageUrl': estimate.imageUrl,
+        'damageType': estimate.damage,
+        'damagedParts': estimate.recommendations,
+        'userId': user.uid,
+        'userEmail': user.email,
+        'createdAt': FieldValue.serverTimestamp(),
+        'status': 'pending',
+        'estimateId': estimate.id,
+      });
+    }
+
+    await batch.commit();
+  }
+
   @override
   void dispose() {
     _subscription?.cancel();
