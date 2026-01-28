@@ -2,10 +2,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/app_user.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+
+  User? get currentUser => _auth.currentUser;
 
   // 1. 사용자의 로그인 상태를 알려주는 스트림 (main.dart의 에러 해결)
   Stream<User?> get user =>
@@ -75,6 +78,20 @@ class AuthService {
     }
   }
 
+  // Firestore에서 사용자 데이터를 Stream으로 가져옴
+  Stream<AppUser?> get appUserStream {
+    final user = _auth.currentUser;
+    if (user == null) return Stream.value(null);
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.exists ? AppUser.fromFirestore(snapshot) : null,
+        );
+  }
+
   // Firestore에 유저 정보가 없을 때만 저장 (최초 1회)
   Future<void> _initializeUserDataIfNeeded(User user) async {
     try {
@@ -91,6 +108,7 @@ class AuthService {
           'email': user.email,
           'displayName': user.displayName,
           'photoURL': user.photoURL,
+          'role': 'none', // 초기 상태는 정해지지 않음
           'upload_counters': 0,
           'createdAt': FieldValue.serverTimestamp(),
         });
@@ -101,6 +119,18 @@ class AuthService {
     } catch (e) {
       debugPrint("Error initializing user data: $e");
     }
+  }
+
+  // 역할 업데이트
+  Future<void> updateUserRole(
+    String uid,
+    UserRole role, {
+    String? serviceCenterId,
+  }) async {
+    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      'role': role.name,
+      'serviceCenterId': serviceCenterId,
+    });
   }
 
   // 3. 로그아웃 로직 (settings_screen.dart의 에러 해결)

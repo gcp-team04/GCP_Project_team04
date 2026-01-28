@@ -17,6 +17,9 @@ import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/search_results_screen.dart';
 import 'widgets/custom_search_bar.dart';
+import 'models/app_user.dart';
+import 'screens/role_selection_screen.dart';
+import 'screens/mechanic_screens.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -91,7 +94,6 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: authService.user,
       builder: (context, snapshot) {
-        // While checking auth state, we can show a loading indicator
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -99,7 +101,23 @@ class AuthWrapper extends StatelessWidget {
         }
 
         if (snapshot.hasData) {
-          return const MainLayout();
+          return StreamBuilder<AppUser?>(
+            stream: authService.appUserStream,
+            builder: (context, appUserSnapshot) {
+              if (appUserSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              final appUser = appUserSnapshot.data;
+              if (appUser == null || appUser.role == UserRole.none) {
+                return const RoleSelectionScreen();
+              }
+
+              return MainLayout(appUser: appUser);
+            },
+          );
         } else {
           return const LoginScreen();
         }
@@ -109,7 +127,8 @@ class AuthWrapper extends StatelessWidget {
 }
 
 class MainLayout extends StatefulWidget {
-  const MainLayout({super.key});
+  final AppUser appUser;
+  const MainLayout({super.key, required this.appUser});
 
   @override
   State<MainLayout> createState() => _MainLayoutState();
@@ -121,24 +140,38 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   void initState() {
     super.initState();
-    // 앱 시작 시 백그라운드에서 정비소 정보를 미리 가져옴 (Pre-fetching)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ShopProvider>(context, listen: false).initialize();
+      if (widget.appUser.role == UserRole.consumer) {
+        Provider.of<ShopProvider>(context, listen: false).initialize();
+      }
     });
   }
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const EstimatePreviewScreen(),
-    const NearbyShopsScreen(),
-    const SettingsScreen(),
-  ];
+  List<Widget> get _screens {
+    if (widget.appUser.role == UserRole.mechanic) {
+      return [
+        ReceivedRequestsScreen(appUser: widget.appUser),
+        ReviewManagementScreen(appUser: widget.appUser),
+        const ChatScreen(),
+        const SettingsScreen(),
+      ];
+    } else {
+      return [
+        const HomeScreen(),
+        const EstimatePreviewScreen(),
+        const NearbyShopsScreen(),
+        const SettingsScreen(),
+      ];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isMechanic = widget.appUser.role == UserRole.mechanic;
+
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 120,
+        toolbarHeight: isMechanic ? 80 : 120,
         backgroundColor: Theme.of(context).cardColor,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -153,7 +186,7 @@ class _MainLayoutState extends State<MainLayout> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.black,
+                        color: isMechanic ? Colors.orangeAccent : Colors.black,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Center(
@@ -165,20 +198,23 @@ class _MainLayoutState extends State<MainLayout> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'CarFix',
-                          style: TextStyle(
+                          isMechanic ? 'CarFix Pro' : 'CarFix',
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 20,
                             height: 1.1,
                           ),
                         ),
                         Text(
-                          'AI 견적 시스템',
-                          style: TextStyle(fontSize: 10, color: Colors.grey),
+                          isMechanic ? '정비사 관리 시스템' : 'AI 견적 시스템',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey,
+                          ),
                         ),
                       ],
                     ),
@@ -188,24 +224,27 @@ class _MainLayoutState extends State<MainLayout> {
                         LucideIcons.settings,
                         color: Colors.grey,
                       ),
-                      onPressed: () => setState(() => _currentIndex = 3),
+                      onPressed: () =>
+                          setState(() => _currentIndex = isMechanic ? 3 : 3),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                CustomSearchBar(
-                  onSubmitted: (value) {
-                    if (value.isNotEmpty) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              SearchResultsScreen(query: value),
-                        ),
-                      );
-                    }
-                  },
-                ),
+                if (!isMechanic) ...[
+                  const SizedBox(height: 12),
+                  CustomSearchBar(
+                    onSubmitted: (value) {
+                      if (value.isNotEmpty) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                SearchResultsScreen(query: value),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
               ],
             ),
           ),
@@ -220,11 +259,17 @@ class _MainLayoutState extends State<MainLayout> {
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(0, '홈', LucideIcons.home),
-                _buildNavItem(1, '견적 미리보기', LucideIcons.fileText),
-                _buildNavItem(2, '근처 정비소', LucideIcons.mapPin),
-              ],
+              children: isMechanic
+                  ? [
+                      _buildNavItem(0, '받은 요청', LucideIcons.inbox),
+                      _buildNavItem(1, '리뷰 관리', LucideIcons.star),
+                      _buildNavItem(2, '채팅', LucideIcons.messageCircle),
+                    ]
+                  : [
+                      _buildNavItem(0, '홈', LucideIcons.home),
+                      _buildNavItem(1, '견적 미리보기', LucideIcons.fileText),
+                      _buildNavItem(2, '근처 정비소', LucideIcons.mapPin),
+                    ],
             ),
           ),
         ),
