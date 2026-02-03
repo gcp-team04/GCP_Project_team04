@@ -82,7 +82,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: MechanicColor.primary100,
         foregroundColor: Colors.black,
       ),
       body: WrenchBackground(
