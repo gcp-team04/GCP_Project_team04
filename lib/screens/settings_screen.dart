@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/theme_provider.dart';
 import '../services/auth_service.dart';
 import '../models/app_user.dart';
+import '../utils/mechanic_design.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -138,10 +139,10 @@ class SettingsScreen extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.blueAccent.withOpacity(0.05),
+            color: MechanicColor.primary500.withOpacity(0.05),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.blueAccent.withOpacity(0.2),
+              color: MechanicColor.primary500.withOpacity(0.2),
               width: 1.5,
             ),
           ),
@@ -153,12 +154,12 @@ class SettingsScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.blueAccent.withOpacity(0.1),
+                      color: MechanicColor.primary500.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       LucideIcons.home,
-                      color: Colors.blueAccent,
+                      color: MechanicColor.primary500,
                       size: 20,
                     ),
                   ),
@@ -168,7 +169,7 @@ class SettingsScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Colors.blueAccent,
+                      color: MechanicColor.primary600,
                     ),
                   ),
                 ],
