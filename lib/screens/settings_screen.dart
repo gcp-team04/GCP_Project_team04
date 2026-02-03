@@ -139,9 +139,12 @@ class SettingsScreen extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: MechanicColor.primary50,
+            color: MechanicColor.primary500.withOpacity(0.05),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: MechanicColor.primary200, width: 1.5),
+            border: Border.all(
+              color: MechanicColor.primary500.withOpacity(0.2),
+              width: 1.5,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,8 +153,8 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(10),
-                    decoration: const BoxDecoration(
-                      color: MechanicColor.primary100,
+                    decoration: BoxDecoration(
+                      color: MechanicColor.primary500.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
