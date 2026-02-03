@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-
 import '../models/app_user.dart';
 import '../services/schedule_service.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../utils/mechanic_design.dart';
 
 class ScheduleScreen extends StatefulWidget {
   final AppUser appUser;
@@ -29,7 +29,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    // Initialize stream once to prevent reloading on setState
     if (widget.appUser.serviceCenterId != null) {
       _schedulesStream = _scheduleService.getSchedules(
         widget.appUser.serviceCenterId!,
@@ -44,22 +43,46 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return _events[normalizedDay] ?? [];
   }
 
+  // 1. Helper: Parse Duration
+  int _parseDuration(dynamic durationVal) {
+    if (durationVal is int) return durationVal;
+    if (durationVal is String) {
+      final match = RegExp(r'\d+').firstMatch(durationVal);
+      if (match != null) return int.parse(match.group(0)!);
+    }
+    return 1;
+  }
+
+  // 2. Helper: Get Pale Orange Color
+  Color _getEventColor(dynamic id) {
+    final paleOranges = [
+      const Color(0xFFFFCC80),
+      const Color(0xFFFFE0B2),
+      const Color(0xFFFFD180),
+      const Color(0xFFFFB74D),
+      const Color(0xFFFFAB91),
+    ];
+    final index = (id?.hashCode ?? 0).abs() % paleOranges.length;
+    return paleOranges[index];
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // Determine shopId
     final shopId = widget.appUser.serviceCenterId;
-
     if (shopId == null) {
-      return const Scaffold(body: Center(child: Text('소속된 정비소가 없습니다.')));
+      return const Center(child: Text('소속된 정비소가 없습니다.'));
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.transparent, // Consistent with WrenchBackground
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: _schedulesStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(color: MechanicColor.primary500),
+            );
           }
 
           if (snapshot.hasError) {
@@ -68,26 +91,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
           final schedules = snapshot.data ?? [];
 
+          // Process Events
           _events = {};
           for (var schedule in schedules) {
             final date = schedule['date'] as DateTime;
             final normalizedDate = DateTime(date.year, date.month, date.day);
 
-            // Determine duration (default 1 day)
-            int duration = 1;
-            final durationVal = schedule['duration'];
-            if (durationVal is int) {
-              duration = durationVal;
-            } else if (durationVal is String) {
-              // Fallback if saved as string
-              final match = RegExp(r'\d+').firstMatch(durationVal);
-              if (match != null) duration = int.parse(match.group(0)!);
-            }
+            int duration = _parseDuration(schedule['duration']);
 
-            // Add event to all dates in range
             for (int i = 0; i < duration; i++) {
               final eventDate = normalizedDate.add(Duration(days: i));
-
               if (_events[eventDate] == null) {
                 _events[eventDate] = [];
               }
@@ -95,435 +108,435 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             }
           }
 
+          // Pre-sort events for each day
+          for (var key in _events.keys) {
+            _events[key]!.sort((a, b) {
+              // 1. 기간(Duration) 비교: 긴 것이 먼저 (내림차순)
+              int durationA = _parseDuration(a['duration']);
+              int durationB = _parseDuration(b['duration']);
+              int durationCompare = durationB.compareTo(
+                durationA,
+              ); // b와 a를 비교해야 내림차순
+              if (durationCompare != 0) return durationCompare;
+
+              // 2. 시작 날짜(Start Date) 비교: 빠른 것이 먼저 (오름차순)
+              final dateA = a['date'] as DateTime;
+              final dateB = b['date'] as DateTime;
+              int dateCompare = dateA.compareTo(dateB);
+              if (dateCompare != 0) return dateCompare;
+
+              // 3. ID 또는 제목 비교 (안정적인 정렬을 위해)
+              return (a['id'] ?? '').toString().compareTo(
+                (b['id'] ?? '').toString(),
+              );
+            });
+          }
+
           final selectedEvents = _getEventsForDay(
             _selectedDay ?? DateTime.now(),
           );
 
-          return SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.blueAccent.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          LucideIcons.calendar,
-                          color: Colors.blueAccent,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '일정 관리',
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            '수리 일정을 확인하고 관리하세요.',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 24),
+
+                // Calendar Card (Highly Rounded & Compact)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    boxShadow: [
+                      BoxShadow(
+                        color: MechanicColor.primary600.withOpacity(0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-
-                  // Calendar Card
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: Colors.blueAccent.withOpacity(0.1),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blueAccent.withOpacity(0.05),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: TableCalendar(
-                      rowHeight: 85, // Increase row height for stacked bars
-                      locale: 'ko_KR',
-                      firstDay: DateTime.utc(2020, 1, 1),
-                      lastDay: DateTime.utc(2030, 12, 31),
-                      focusedDay: _focusedDay,
-                      calendarFormat: _calendarFormat,
-                      selectedDayPredicate: (day) =>
-                          isSameDay(_selectedDay, day),
-                      onDaySelected: (selectedDay, focusedDay) {
-                        setState(() {
-                          _selectedDay = selectedDay;
-                          _focusedDay = focusedDay;
-                        });
-                      },
-                      onFormatChanged: (format) {
-                        setState(() {
-                          _calendarFormat = format;
-                        });
-                      },
-                      onPageChanged: (focusedDay) {
+                  child: TableCalendar(
+                    rowHeight: 80,
+                    daysOfWeekHeight: 22,
+                    locale: 'ko_KR',
+                    firstDay: DateTime.utc(2020, 1, 1),
+                    lastDay: DateTime.utc(2030, 12, 31),
+                    focusedDay: _focusedDay,
+                    calendarFormat: _calendarFormat,
+                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                    onDaySelected: (selectedDay, focusedDay) {
+                      setState(() {
+                        _selectedDay = selectedDay;
                         _focusedDay = focusedDay;
-                      },
-                      eventLoader: _getEventsForDay,
-                      headerStyle: HeaderStyle(
-                        titleCentered: true,
-                        formatButtonVisible: false,
-                        titleTextStyle: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                        leftChevronIcon: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.chevron_left,
-                            color: Colors.blueAccent,
-                            size: 20,
-                          ),
-                        ),
-                        rightChevronIcon: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.chevron_right,
-                            color: Colors.blueAccent,
-                            size: 20,
-                          ),
-                        ),
+                      });
+                    },
+                    onFormatChanged: (format) {
+                      setState(() {
+                        _calendarFormat = format;
+                      });
+                    },
+                    onPageChanged: (focusedDay) {
+                      _focusedDay = focusedDay;
+                    },
+                    eventLoader: _getEventsForDay,
+                    headerStyle: HeaderStyle(
+                      titleCentered: true,
+                      formatButtonVisible: false,
+                      headerMargin: const EdgeInsets.only(bottom: 8),
+                      headerPadding: const EdgeInsets.symmetric(vertical: 4),
+                      titleTextStyle: MechanicTypography.subheader.copyWith(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
                       ),
-                      calendarBuilders: CalendarBuilders(
-                        markerBuilder: (context, day, events) {
-                          if (events.isEmpty) return null;
+                      leftChevronIcon: const Icon(
+                        LucideIcons.chevronLeft,
+                        color: Color(0xFFD1D5DB),
+                        size: 28,
+                      ),
+                      rightChevronIcon: const Icon(
+                        LucideIcons.chevronRight,
+                        color: Color(0xFFD1D5DB),
+                        size: 28,
+                      ),
+                    ),
+                    calendarBuilders: CalendarBuilders(
+                      selectedBuilder: (context, day, focusedDay) {
+                        // When selected, standard number but maybe highlighted background?
+                        // The design shows selection circle around the number.
+                        // But we also need to see the bars under it or behind it.
+                        // Standard selection often hides markers or puts them on top.
+                        // We'll keep the number style but ensure markers still render below.
+                        // By extracting the "number" part and letting markers render in markerBuilder (which overlays)
+                        // OR, TableCalendar renders markers *on top* of cells usually.
+                        // Let's keep the circle for the number.
+                        return Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          alignment: Alignment.topCenter,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: const BoxDecoration(
+                              color: MechanicColor.primary500,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: MechanicColor.primary300,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '${day.day}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      todayBuilder: (context, day, focusedDay) {
+                        return Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          alignment: Alignment.topCenter,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            alignment: Alignment.center,
+                            child: Text(
+                              '${day.day}',
+                              style: const TextStyle(
+                                color: MechanicColor.primary500,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      defaultBuilder: (context, day, focusedDay) {
+                        return Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          alignment: Alignment.topCenter,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            alignment: Alignment.center,
+                            child: Text(
+                              '${day.day}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      markerBuilder: (context, day, events) {
+                        if (events.isEmpty) return null;
 
-                          // 1. Sort events for consistent stacking order
-                          final sortedEvents = List<Map<String, dynamic>>.from(
-                            events as List<Map<String, dynamic>>,
-                          );
-                          // Sort by ID or creation time to keep consistent
-                          sortedEvents.sort(
-                            (a, b) => (a['id'] ?? '').compareTo(b['id'] ?? ''),
-                          );
+                        const maxVisibleCount = 2;
+                        final visibleEvents = events
+                            .take(maxVisibleCount)
+                            .toList();
+                        final hasMoreEvents = events.length > maxVisibleCount;
 
-                          // 2. Build stacked bars
-                          return Positioned(
-                            bottom: 1,
-                            left: 0,
-                            right: 0,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: sortedEvents.take(4).map((eventData) {
-                                final startDate = eventData['date'] as DateTime;
+                        return Container(
+                          alignment: Alignment.topCenter,
+
+                          // [수정 1] Wrapper의 좌우 패딩 제거 (Top만 남김)
+                          padding: const EdgeInsets.only(top: 44),
+
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              ...visibleEvents.map((eventData) {
+                                final mapData =
+                                    eventData as Map<String, dynamic>;
+                                final startDate = mapData['date'] as DateTime;
                                 final normalizedStart = DateTime(
                                   startDate.year,
                                   startDate.month,
                                   startDate.day,
                                 );
 
-                                // Calculate Duration
-                                int duration = 1;
-                                final durationVal = eventData['duration'];
-                                if (durationVal is int) {
-                                  duration = durationVal;
-                                } else if (durationVal is String) {
-                                  final match = RegExp(
-                                    r'\d+',
-                                  ).firstMatch(durationVal);
-                                  if (match != null)
-                                    duration = int.parse(match.group(0)!);
-                                }
-
+                                int duration = _parseDuration(
+                                  mapData['duration'],
+                                );
+                                final normalizedEnd = normalizedStart.add(
+                                  Duration(days: duration - 1),
+                                );
                                 final normalizedDay = DateTime(
                                   day.year,
                                   day.month,
                                   day.day,
                                 );
-                                final normalizedEnd = normalizedStart.add(
-                                  Duration(days: duration - 1),
-                                );
-                                bool isStart = isSameDay(
-                                  normalizedDay,
+
+                                final isStart = normalizedDay.isAtSameMomentAs(
                                   normalizedStart,
                                 );
-                                bool isEnd = isSameDay(
-                                  normalizedDay,
+                                final isEnd = normalizedDay.isAtSameMomentAs(
                                   normalizedEnd,
                                 );
 
-                                // Color generation based on ID - Light Blue Tones
-                                final colors = [
-                                  const Color(0xFFBBDEFB), // Blue 100
-                                  const Color(0xFFB3E5FC), // Light Blue 100
-                                  const Color(0xFFC5CAE9), // Indigo 100
-                                  const Color(0xFFB2EBF2), // Cyan 100
-                                  const Color(0xFFD1C4E9), // Deep Purple 100
-                                  const Color(0xFFE1F5FE), // Light Blue 50
-                                ];
-                                final colorIndex =
-                                    (eventData['id'] ?? '').hashCode.abs() %
-                                    colors.length;
-                                final eventColor = colors[colorIndex];
+                                final showText =
+                                    isStart ||
+                                    (day.weekday == DateTime.sunday &&
+                                        normalizedDay.isAfter(normalizedStart));
 
                                 return Container(
-                                  height: 16, // Thicker bar
-                                  margin: const EdgeInsets.symmetric(
-                                    vertical: 1,
+                                  height: 16,
+
+                                  // [수정 2] 각각의 아이템에 조건부 마진 적용
+                                  // 시작일이면 왼쪽에 1.5, 종료일이면 오른쪽에 1.5 여백을 주어 구분감을 줌
+                                  // 중간 날짜는 여백이 0이므로 옆 날짜와 딱 붙어서 연결되어 보임
+                                  margin: EdgeInsets.only(
+                                    bottom: 2,
+                                    left: isStart ? 1.5 : 0.0,
+                                    right: isEnd ? 1.5 : 0.0,
                                   ),
-                                  child: Container(
-                                    margin: EdgeInsets.only(
-                                      left: isStart ? 2 : 0,
-                                      right: isEnd ? 2 : 0,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: eventColor,
-                                      borderRadius: BorderRadius.horizontal(
-                                        left: isStart
-                                            ? const Radius.circular(4)
-                                            : Radius.zero,
-                                        right: isEnd
-                                            ? const Radius.circular(4)
-                                            : Radius.zero,
-                                      ),
-                                    ),
-                                    alignment: Alignment.centerLeft,
-                                    child: isStart
-                                        ? Text(
-                                            eventData['title'] ?? '',
-                                            style: TextStyle(
-                                              color: Colors
-                                                  .blue
-                                                  .shade900, // Dark text for contrast
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            maxLines: 1,
-                                          )
-                                        : null,
+
+                                  padding: const EdgeInsets.only(
+                                    left: 4,
+                                    right: 2,
                                   ),
+                                  decoration: BoxDecoration(
+                                    color: _getEventColor(
+                                      mapData['id'],
+                                    ).withOpacity(0.9),
+                                    borderRadius: BorderRadius.horizontal(
+                                      left: isStart
+                                          ? const Radius.circular(4)
+                                          : Radius.zero,
+                                      right: isEnd
+                                          ? const Radius.circular(4)
+                                          : Radius.zero,
+                                    ),
+                                  ),
+                                  alignment: Alignment.centerLeft,
+                                  child: showText
+                                      ? Text(
+                                          mapData['title'] ?? '',
+                                          style: const TextStyle(
+                                            color: Colors.black87,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w600,
+                                            height: 1.1,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        )
+                                      : null,
                                 );
-                              }).toList(),
-                            ),
-                          );
-                        },
+                              }),
+                              if (hasMoreEvents)
+                                Container(
+                                  height: 8,
+                                  alignment: Alignment.topCenter,
+                                  child: const Icon(
+                                    Icons.more_horiz,
+                                    size: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    calendarStyle: const CalendarStyle(
+                      outsideDaysVisible: false,
+                      markersMaxCount: 0,
+                      cellMargin: EdgeInsets.zero,
+                      cellPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 4),
+
+                // Selected Date Details
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('상세 일정', style: MechanicTypography.subheader),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
                       ),
-                      calendarStyle: CalendarStyle(
-                        outsideDaysVisible: false,
-                        markersMaxCount:
-                            0, // Disable default markers completely
-                        // Ensure cell content (date number) aligns top
-                        cellMargin: const EdgeInsets.all(0),
-                        cellPadding: const EdgeInsets.all(0),
-                        // We use default decoration for selection circle, may need adjusting
-                        selectedDecoration: const BoxDecoration(
-                          color: Colors.blueAccent,
-                          shape: BoxShape.circle,
-                        ),
-                        todayDecoration: BoxDecoration(
-                          color: Colors.blueAccent.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        todayTextStyle: const TextStyle(
-                          color: Colors.blueAccent,
+                      decoration: BoxDecoration(
+                        color: MechanicColor.primary100,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${selectedEvents.length}건',
+                        style: const TextStyle(
+                          color: MechanicColor.primary700,
                           fontWeight: FontWeight.bold,
+                          fontSize: 12,
                         ),
                       ),
                     ),
-                  ),
+                  ],
+                ),
+                const SizedBox(height: 12),
 
-                  const SizedBox(height: 32),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        '상세 일정',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                // Event List
+                Expanded(
+                  child: selectedEvents.isEmpty
+                      ? _buildEmptyEventsState()
+                      : ListView.builder(
+                          padding: EdgeInsets.zero,
+                          itemCount: selectedEvents.length,
+                          itemBuilder: (context, index) {
+                            final event = selectedEvents[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: _EventCard(event: event),
+                            );
+                          },
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.blueAccent.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${selectedEvents.length}건',
-                          style: const TextStyle(
-                            color: Colors.blueAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  if (selectedEvents.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(40),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: theme.dividerColor.withOpacity(0.5),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            LucideIcons.calendarX,
-                            size: 48,
-                            color: Colors.grey[300],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            '해당 날짜에 잡힌 일정이 없습니다.',
-                            style: TextStyle(color: Colors.grey[500]),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    ...selectedEvents
-                        .map(
-                          (event) => Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors
-                                    .blueAccent, // Blue border as requested
-                                width: 1.5,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.blueAccent.withOpacity(0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () => _showEventDetails(context, event),
-                                borderRadius: BorderRadius.circular(20),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(20),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 48,
-                                        height: 48,
-                                        decoration: BoxDecoration(
-                                          color: Colors.blueAccent.withOpacity(
-                                            0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: const Center(
-                                          child: Icon(
-                                            LucideIcons.wrench,
-                                            color: Colors.blueAccent,
-                                            size: 24,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              event['title'] ?? '제목 없음',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                const Icon(
-                                                  LucideIcons.user,
-                                                  size: 14,
-                                                  color: Colors.grey,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Expanded(
-                                                  child: Text(
-                                                    event['customerEmail'] ??
-                                                        '정보 없음',
-                                                    style: TextStyle(
-                                                      color: Colors.grey[600],
-                                                      fontSize: 13,
-                                                    ),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const Icon(
-                                        LucideIcons.chevronRight,
-                                        color: Colors.grey,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(),
-
-                  const SizedBox(height: 40),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildEmptyEventsState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            LucideIcons.calendarX,
+            size: 48,
+            color: Colors.grey.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            '해당 날짜에 잡힌 일정이 없습니다.',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EventCard extends StatelessWidget {
+  final Map<String, dynamic> event;
+  const _EventCard({required this.event});
+
+  @override
+  Widget build(BuildContext context) {
+    return MechanicCard(
+      padding: const EdgeInsets.all(16),
+      onTap: () => _showEventDetails(context, event),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: MechanicColor.primary100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Icon(
+                LucideIcons.wrench,
+                color: MechanicColor.primary600,
+                size: 24,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  event['title'] ?? '제목 없음',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(LucideIcons.user, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        event['customerEmail'] ?? '정보 없음',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Icon(LucideIcons.chevronRight, color: Colors.grey),
+        ],
       ),
     );
   }
@@ -558,22 +571,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.blueAccent.withOpacity(0.1),
+                      color: MechanicColor.primary100,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
                       LucideIcons.fileText,
-                      color: Colors.blueAccent,
+                      color: MechanicColor.primary600,
                       size: 24,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Text(
                     '일정 상세 내역',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
+                    style: MechanicTypography.headline.copyWith(fontSize: 20),
                   ),
                 ],
               ),
