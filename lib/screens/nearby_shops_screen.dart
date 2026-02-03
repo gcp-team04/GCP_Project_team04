@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/shop_provider.dart';
 import '../widgets/service_center_item.dart';
+import '../utils/consumer_design.dart';
 
 class NearbyShopsScreen extends StatefulWidget {
   const NearbyShopsScreen({super.key});
@@ -37,6 +38,7 @@ class _NearbyShopsScreenState extends State<NearbyShopsScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 100), // Header spacing
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
               child: Row(
@@ -45,23 +47,13 @@ class _NearbyShopsScreenState extends State<NearbyShopsScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        '내 근처 정비소 (10km)',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text('내 근처 정비소 (10km)', style: ConsumerTypography.h1),
                       const SizedBox(height: 4),
                       Text(
                         allShops.isEmpty && !shopProvider.isLoading
                             ? '검색된 정비소가 없습니다.'
                             : '총 ${allShops.length}개의 정비소가 검색되었습니다.',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.blueAccent,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: ConsumerTypography.tag,
                       ),
                     ],
                   ),

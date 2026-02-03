@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../providers/estimate_provider.dart';
 import 'estimate_detail_screen.dart';
+import '../utils/consumer_design.dart';
 
 class EstimatePreviewScreen extends StatefulWidget {
   const EstimatePreviewScreen({super.key});
@@ -29,23 +30,18 @@ class _EstimatePreviewScreenState extends State<EstimatePreviewScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 100), // Header spacing
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '견적 미리보기',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
+                  Text('견적 미리보기', style: ConsumerTypography.h1),
                   if (estimates.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(
                       '총 ${estimates.length}개의 저장된 견적이 있습니다.',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.blueAccent,
-                      ),
+                      style: ConsumerTypography.tag,
                     ),
                   ],
                 ],
@@ -108,9 +104,9 @@ class _EstimatePreviewScreenState extends State<EstimatePreviewScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Theme.of(context).dividerColor),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: ConsumerColor.slate100),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.02),
@@ -201,36 +197,31 @@ class _EstimatePreviewScreenState extends State<EstimatePreviewScreen> {
                     children: [
                       Text(
                         est.title,
-                        style: const TextStyle(
+                        style: ConsumerTypography.bodyLarge.copyWith(
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          color: ConsumerColor.slate800,
                         ),
                       ),
+                      const SizedBox(height: 4),
                       if (est.realPrice != null) ...[
                         Text(
                           '예상: ${est.price}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey,
+                          style: ConsumerTypography.bodySmall.copyWith(
                             decoration: TextDecoration.lineThrough,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           est.realPrice!,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                          style: ConsumerTypography.h2.copyWith(
                             color: Colors.green,
                           ),
                         ),
                       ] else ...[
                         Text(
                           est.price,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blueAccent,
+                          style: ConsumerTypography.h2.copyWith(
+                            color: ConsumerColor.brand600,
                           ),
                         ),
                       ],

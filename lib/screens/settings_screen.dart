@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/theme_provider.dart';
 import '../services/auth_service.dart';
 import '../models/app_user.dart';
+import '../utils/consumer_design.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -21,13 +22,23 @@ class SettingsScreen extends StatelessWidget {
         final appUser = snapshot.data;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: EdgeInsets.only(
+            top: appUser?.role == UserRole.consumer ? 120 : 24,
+            left: 24,
+            right: 24,
+            bottom: 24,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 '설정',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: appUser?.role == UserRole.consumer
+                    ? ConsumerTypography.h1
+                    : const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
               ),
               const SizedBox(height: 32),
 
@@ -41,9 +52,13 @@ class SettingsScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Theme.of(context).dividerColor),
+                  border: Border.all(
+                    color: appUser?.role == UserRole.consumer
+                        ? ConsumerColor.brand100
+                        : Theme.of(context).dividerColor,
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

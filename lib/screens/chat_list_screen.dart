@@ -35,12 +35,27 @@ class _ChatListScreenState extends State<ChatListScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return const Center(child: Text('채팅방이 없습니다.'));
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (appUser?.role == UserRole.consumer)
+                      const SizedBox(height: 100),
+                    const Text('채팅방이 없습니다.'),
+                  ],
+                ),
+              );
             }
 
             final chatRooms = snapshot.data!.docs;
 
             return ListView.builder(
+              padding: EdgeInsets.only(
+                top: appUser?.role == UserRole.consumer ? 100 : 16,
+                bottom: 16,
+                left: 16,
+                right: 16,
+              ),
               itemCount: chatRooms.length,
               itemBuilder: (context, index) {
                 final room = chatRooms[index];
@@ -50,20 +65,29 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 final consumerId = roomData['consumerId'] as String?;
 
                 return FutureBuilder<AppUser?>(
-                  future: _chatService.getOtherParticipantUser(participants, _currentUserId),
+                  future: _chatService.getOtherParticipantUser(
+                    participants,
+                    _currentUserId,
+                  ),
                   builder: (context, userSnapshot) {
                     final otherUser = userSnapshot.data;
 
                     return FutureBuilder<Estimate?>(
                       future: (estimateId != null && consumerId != null)
-                          ? _chatService.getEstimateDetails(estimateId, consumerId)
+                          ? _chatService.getEstimateDetails(
+                              estimateId,
+                              consumerId,
+                            )
                           : Future.value(null),
                       builder: (context, estimateSnapshot) {
                         final estimate = estimateSnapshot.data;
 
                         String title = otherUser?.displayName ?? '상대방';
                         if (appUser?.role == UserRole.consumer) {
-                          title = roomData['shopName'] ?? otherUser?.displayName ?? '정비소';
+                          title =
+                              roomData['shopName'] ??
+                              otherUser?.displayName ??
+                              '정비소';
                         }
 
                         return ChatListItem(

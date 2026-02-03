@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../providers/estimate_provider.dart';
 import '../providers/shop_provider.dart';
 import '../models/service_center.dart';
+import '../utils/consumer_design.dart';
 
 class SelectShopsScreen extends StatefulWidget {
   final Estimate estimate;
@@ -38,9 +39,9 @@ class _SelectShopsScreenState extends State<SelectShopsScreen> {
       if (count != null && count > 0) {
         shopsToSend = shopProvider.shops.take(count).toList();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('유효한 숫자를 입력해주세요.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('유효한 숫자를 입력해주세요.')));
         return;
       }
     } else {
@@ -51,15 +52,17 @@ class _SelectShopsScreenState extends State<SelectShopsScreen> {
     }
 
     if (shopsToSend.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('요청을 보낼 정비소가 없습니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('요청을 보낼 정비소가 없습니다.')));
       return;
     }
 
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${shopsToSend.length}개의 정비소에 수리 요청을 전송 중입니다...')),
+        SnackBar(
+          content: Text('${shopsToSend.length}개의 정비소에 수리 요청을 전송 중입니다...'),
+        ),
       );
 
       await estimateProvider.sendEstimateToNearbyShops(
@@ -69,13 +72,15 @@ class _SelectShopsScreenState extends State<SelectShopsScreen> {
 
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${shopsToSend.length}개의 정비소에 수리 요청을 성공적으로 보냈습니다.')),
+        SnackBar(
+          content: Text('${shopsToSend.length}개의 정비소에 수리 요청을 성공적으로 보냈습니다.'),
+        ),
       );
       Navigator.of(context).pop();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('요청 전송 중 오류가 발생했습니다: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('요청 전송 중 오류가 발생했습니다: $e')));
     }
   }
 
@@ -85,9 +90,12 @@ class _SelectShopsScreenState extends State<SelectShopsScreen> {
     final shops = shopProvider.shops;
 
     return Scaffold(
+      backgroundColor: ConsumerColor.brand50,
       appBar: AppBar(
-        title: const Text('요청 보낼 정비소 선택'),
+        title: Text('정비소 선택', style: ConsumerTypography.h2),
         centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: Column(
         children: [
@@ -131,16 +139,22 @@ class _SelectShopsScreenState extends State<SelectShopsScreen> {
         ],
       ),
       bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.only(
+          left: 24,
+          right: 24,
+          bottom: 32,
+          top: 16,
+        ),
         child: ElevatedButton(
           onPressed: _sendRequest,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blueAccent,
+            backgroundColor: ConsumerColor.brand500,
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 56),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
+            elevation: 0,
           ),
           child: const Text(
             '선택한 정비소에 요청 보내기',
