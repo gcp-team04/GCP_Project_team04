@@ -45,9 +45,19 @@ class _NearbyShopsScreenState extends State<NearbyShopsScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 130), // Header spacing
+            const SizedBox(height: 100), // Header spacing
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: CustomSearchBar(
+                onSearch: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -72,16 +82,6 @@ class _NearbyShopsScreenState extends State<NearbyShopsScreen> {
                     },
                   ),
                 ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: CustomSearchBar(
-                onSearch: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
               ),
             ),
             Expanded(

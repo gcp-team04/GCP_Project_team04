@@ -233,7 +233,7 @@ class ConsumerHeader extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return Container(
       color: ConsumerColor.brand50,
-      padding: const EdgeInsets.only(left: 20, right: 20, top: 48, bottom: 16),
+      padding: const EdgeInsets.only(left: 20, right: 20, top: 36, bottom: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -311,7 +311,7 @@ class ConsumerHeader extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(100);
+  Size get preferredSize => const Size.fromHeight(84);
 }
 
 class WaveGraphic extends StatelessWidget {
@@ -381,48 +381,35 @@ class ConsumerBottomNav extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 30,
-            offset: const Offset(0, -8),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
-      padding: const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 32),
+      padding: const EdgeInsets.only(left: 12, right: 12, top: 8, bottom: 28),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: List.generate(items.length, (index) {
           final isActive = currentIndex == index;
           return Expanded(
-            child: InkWell(
+            child: GestureDetector(
               onTap: () => onTap(index),
+              behavior: HitTestBehavior.opaque,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: isActive
                           ? ConsumerColor.brand50
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: isActive
-                          ? [
-                              BoxShadow(
-                                color: ConsumerColor.brand100,
-                                blurRadius: 4,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    transform: Matrix4.translationValues(
-                      0,
-                      isActive ? -4 : 0,
-                      0,
+                          : ConsumerColor.brand50.withValues(alpha: 0),
+                      shape: BoxShape.circle,
                     ),
                     child: Icon(
                       items[index]['icon'],
@@ -432,14 +419,17 @@ class ConsumerBottomNav extends StatelessWidget {
                           : ConsumerColor.slate400,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    items[index]['label'],
+                  const SizedBox(height: 2),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
                     style: ConsumerTypography.navLabel.copyWith(
+                      fontSize: 10,
+                      fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
                       color: isActive
                           ? ConsumerColor.brand600
-                          : ConsumerColor.slate300,
+                          : ConsumerColor.slate400,
                     ),
+                    child: Text(items[index]['label']),
                   ),
                 ],
               ),

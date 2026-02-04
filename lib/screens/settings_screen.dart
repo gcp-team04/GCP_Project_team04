@@ -49,7 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         return SingleChildScrollView(
           padding: EdgeInsets.only(
-            top: isConsumer ? 150 : 24,
+            top: isConsumer ? 110 : 24,
             left: 24,
             right: 24,
             bottom: 24,
@@ -57,6 +57,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (isConsumer)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: CustomSearchBar(
+                    onSearch: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                  ),
+                ),
               Text(
                 '설정',
                 style: isConsumer
@@ -67,18 +78,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
               ),
               const SizedBox(height: 16),
-              if (isConsumer)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: CustomSearchBar(
-                    onSearch: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                  ),
-                ),
-              const SizedBox(height: 8),
 
               if (filteredItems.contains('shop_info') &&
                   appUser?.serviceCenterId != null) ...[

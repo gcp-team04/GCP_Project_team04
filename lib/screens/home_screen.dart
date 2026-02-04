@@ -397,12 +397,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Column(
           children: [
-            const SizedBox(height: 130),
+            const SizedBox(height: 100),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: CustomSearchBar(
                 onSearch: (value) {
                   // TODO: 홈 화면 통합 검색 기능 구현
@@ -412,7 +412,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Hero Section
             Column(
               children: [
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 Stack(
                   alignment: Alignment.center,
                   children: [

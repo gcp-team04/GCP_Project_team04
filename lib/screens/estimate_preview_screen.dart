@@ -37,9 +37,19 @@ class _EstimatePreviewScreenState extends State<EstimatePreviewScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 130), // Header spacing
+            const SizedBox(height: 100), // Header spacing
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: CustomSearchBar(
+                onSearch: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -52,16 +62,6 @@ class _EstimatePreviewScreenState extends State<EstimatePreviewScreen> {
                     ),
                   ],
                 ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: CustomSearchBar(
-                onSearch: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
               ),
             ),
             Expanded(

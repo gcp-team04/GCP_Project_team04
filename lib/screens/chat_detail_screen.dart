@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../services/chat_service.dart';
+import '../utils/consumer_design.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String roomId;
@@ -45,16 +46,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: ConsumerColor.background,
       appBar: AppBar(
-        title: Text(
-          widget.otherUserName,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
+        title: Text(widget.otherUserName, style: ConsumerTypography.h2),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        foregroundColor: ConsumerColor.slate800,
+        surfaceTintColor: Colors.white,
       ),
       body: Column(
         children: [
@@ -138,7 +137,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isMe ? Colors.blueAccent : Colors.white,
+                color: isMe ? ConsumerColor.brand500 : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -158,7 +157,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               child: Text(
                 text,
                 style: TextStyle(
-                  color: isMe ? Colors.white : Colors.black87,
+                  color: isMe ? Colors.white : ConsumerColor.slate800,
                   fontSize: 15,
                   height: 1.3,
                 ),
@@ -170,7 +169,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               padding: const EdgeInsets.only(left: 8, bottom: 2),
               child: Text(
                 DateFormat('HH:mm').format(time),
-                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: ConsumerColor.slate400,
+                ),
               ),
             ),
         ],
@@ -202,7 +204,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: ConsumerColor.slate50,
                 borderRadius: BorderRadius.circular(24),
               ),
               child: TextField(
@@ -213,14 +215,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   contentPadding: EdgeInsets.symmetric(vertical: 10),
                 ),
                 maxLines: null,
-                style: const TextStyle(fontSize: 15),
+                style: ConsumerTypography.bodyMedium,
               ),
             ),
           ),
           const SizedBox(width: 8),
           Container(
             decoration: const BoxDecoration(
-              color: Colors.blueAccent,
+              color: ConsumerColor.brand500,
               shape: BoxShape.circle,
             ),
             child: IconButton(

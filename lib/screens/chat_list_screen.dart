@@ -10,7 +10,7 @@ import 'package:gcp_project_team_04/services/chat_service.dart';
 import 'package:gcp_project_team_04/services/auth_service.dart';
 import 'package:gcp_project_team_04/widgets/chat_list_item.dart';
 import '../widgets/custom_search_bar.dart';
-import '../widgets/custom_search_bar.dart';
+import '../utils/consumer_design.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -53,22 +53,53 @@ class _ChatListScreenState extends State<ChatListScreen> {
             }).toList();
 
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (appUser?.role == UserRole.consumer)
-                  const SizedBox(height: 130),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 8,
+                if (appUser?.role == UserRole.consumer) ...[
+                  const SizedBox(height: 100),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 8,
+                    ),
+                    child: CustomSearchBar(
+                      onSearch: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      },
+                    ),
                   ),
-                  child: CustomSearchBar(
-                    onSearch: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('채팅', style: ConsumerTypography.h1),
+                        const SizedBox(height: 4),
+                        Text(
+                          '정비소에 문의사항을 보내보세요.',
+                          style: ConsumerTypography.bodyMedium,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ] else ...[
+                  // For Mechanic or other roles
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 8,
+                    ),
+                    child: CustomSearchBar(
+                      onSearch: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      },
+                    ),
+                  ),
+                ],
                 Expanded(
                   child: filteredRooms.isEmpty
                       ? Center(
@@ -84,10 +115,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.only(
-                            bottom: 16,
-                            left: 16,
-                            right: 16,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
                           ),
                           itemCount: filteredRooms.length,
                           itemBuilder: (context, index) {
