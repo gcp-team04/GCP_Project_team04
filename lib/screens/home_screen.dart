@@ -24,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _imageUrl;
   bool _isAnalyzing = false;
   bool _isUploading = false;
+  bool _showPartImage = false; // [추가] 부품 이미지 전환 상태
   Map<String, dynamic>? _result;
   final StorageService _storageService = StorageService();
   StreamSubscription? _subscription;
@@ -43,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _startProgressSimulation() {
     setState(() {
       _analysisProgress = 0.0;
+      _showPartImage = false; // 이미지 업로드 시 초기화
     });
     _progressTimer?.cancel();
     _progressTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
@@ -200,7 +202,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   _result = {
                     'damage': damageDescription,
                     'estimatedPrice': formattedPrice,
-                    'analyzedImageUrl': data['damageImageUrl'], // AI 서버가 저장한 필드
+                    'analyzedImageUrl': data['damageImageUrl'],
+                    'partImageUrl': data['partImageUrl'], // [추가] 부품 분석 이미지 URL
                     'recommendations': [
                       '손상 부위 정밀 점검 필요',
                       '주변 부위 도장 상태 확인',
@@ -635,11 +638,27 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_result!['analyzedImageUrl'] != null)
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                _result!['analyzedImageUrl'],
-                width: double.infinity,
-                height: 200,
-                fit: BoxFit.cover,
+              child: Stack(
+                children: [
+                  // 기본 분석 이미지 (하단)
+                  Image.network(
+                    _result!['analyzedImageUrl'],
+                    width: double.infinity,
+                    height: 200,
+                    fit: BoxFit.cover,
+                  ),
+                  // 부품 분석 이미지 (상단, 투명도 적용)
+                  if (_result!['partImageUrl'] != null)
+                    Opacity(
+                      opacity: 0.6, // 투명도 조절로 두 이미지를 합성한 것처럼 보여줌
+                      child: Image.network(
+                        _result!['partImageUrl'],
+                        width: double.infinity,
+                        height: 200,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                ],
               ),
             ),
           const SizedBox(height: 24),
