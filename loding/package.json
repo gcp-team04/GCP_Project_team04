@@ -1,5 +1,5 @@
 {
-  "name": "carfix-ai",
+  "name": "ai-mechanic-pixie---loading-animation",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,12 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-dom": "^19.2.4",
-    "@google/genai": "^1.39.0",
-    "lucide-react": "^0.563.0",
-    "recharts": "^3.7.0",
+    "framer-motion": "^12.31.0",
     "react": "^19.2.4",
-    "clsx": "^2.1.1"
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

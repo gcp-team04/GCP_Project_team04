@@ -11,6 +11,7 @@ import '../providers/shop_provider.dart';
 import '../providers/estimate_provider.dart';
 import '../widgets/custom_search_bar.dart';
 import '../utils/consumer_design.dart';
+import '../widgets/sophisticated_loading_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,6 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _result;
   final StorageService _storageService = StorageService();
   StreamSubscription? _subscription;
+  double _analysisProgress = 0.0;
+  Timer? _progressTimer;
 
   // [추가] 업로드 시작 시간을 기록하여 과거 데이터 필터링
   DateTime? _uploadStartTime;
@@ -33,7 +36,34 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _subscription?.cancel();
+    _progressTimer?.cancel();
     super.dispose();
+  }
+
+  void _startProgressSimulation() {
+    setState(() {
+      _analysisProgress = 0.0;
+    });
+    _progressTimer?.cancel();
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (mounted) {
+        setState(() {
+          if (_analysisProgress < 0.95) {
+            _analysisProgress += 0.005;
+          } else if (_analysisProgress < 0.99) {
+            _analysisProgress += 0.001;
+          }
+        });
+      }
+    });
+  }
+
+  void _stopProgressSimulation() {
+    _progressTimer?.cancel();
+    _progressTimer = null;
+    setState(() {
+      _analysisProgress = 1.0;
+    });
   }
 
   void _listenForAnalysisResult() {
@@ -79,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _subscription = null;
 
               if (mounted) {
+                _stopProgressSimulation();
                 setState(() {
                   _isAnalyzing = false;
 
@@ -200,6 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         final imageUrl = await _storageService.uploadCrashedCarPicture(image);
         if (!mounted) return;
+        _startProgressSimulation();
         setState(() {
           _imageUrl = imageUrl;
           _isUploading = false;
@@ -210,6 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _listenForAnalysisResult();
       } catch (e) {
         if (!mounted) return;
+        _stopProgressSimulation();
         setState(() {
           _isUploading = false;
           _isAnalyzing = false;
@@ -409,49 +442,51 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
             ),
-            // Hero Section
-            Column(
-              children: [
-                const SizedBox(height: 8),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: PixieMascot(status: 'idle', size: 96),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '안녕하세요! \nAI 정비사 픽시가 도와드릴게요',
-                  textAlign: TextAlign.center,
-                  style: ConsumerTypography.h1,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '파손된 부위 사진을 올려주시면\n빠르게 견적을 내어드려요.',
-                  textAlign: TextAlign.center,
-                  style: ConsumerTypography.bodyMedium,
-                ),
-                const SizedBox(height: 32),
-              ],
-            ),
-
             // Upload Card / analyzing / result
-            if (!_isAnalyzing && !_isUploading && _result == null)
-              _buildUploadCard()
-            else if (_isUploading || _isAnalyzing)
-              _buildAnalyzingState()
-            else if (_result != null)
+            if (!_isAnalyzing && !_isUploading && _result == null) ...[
+              // Hero Section
+              Column(
+                children: [
+                  const SizedBox(height: 8),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: PixieMascot(status: 'idle', size: 96),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '안녕하세요! \nAI 정비사 픽시가 도와드릴게요',
+                    textAlign: TextAlign.center,
+                    style: ConsumerTypography.h1,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '파손된 부위 사진을 올려주시면\n빠르게 견적을 내어드려요.',
+                    textAlign: TextAlign.center,
+                    style: ConsumerTypography.bodyMedium,
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ),
+              _buildUploadCard(),
+            ] else if (_isUploading || _isAnalyzing) ...[
+              const SizedBox(height: 24),
+              _buildAnalyzingState(),
+            ] else if (_result != null) ...[
+              const SizedBox(height: 24),
               _buildResultView(),
+            ],
 
             const SizedBox(height: 120), // Bottom padding for nav
           ],
@@ -566,27 +601,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAnalyzingState() {
-    return Container(
-      width: double.infinity,
-      height: 380,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: ConsumerColor.slate100),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const PixieMascot(status: 'thinking', size: 128),
-          const SizedBox(height: 32),
-          Text(
-            _isUploading ? '사진을 업로드 중...' : 'AI가 분석하고 있어요...',
-            style: ConsumerTypography.h2,
-          ),
-          const SizedBox(height: 8),
-          Text('잠시만 기다려주세요', style: ConsumerTypography.bodyMedium),
-        ],
-      ),
+    return SophisticatedLoadingScreen(
+      progress: _analysisProgress,
+      statusText: _isUploading ? '사진을 업로드 중...' : 'AI가 분석하고 있어요...',
+      imageUrl: _imageUrl,
     );
   }
 
