@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'chat_detail_screen.dart';
 import 'package:gcp_project_team_04/services/schedule_service.dart';
+import '../widgets/custom_search_bar.dart';
 import '../utils/consumer_design.dart';
 
 class ShopResponsesScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class ShopResponsesScreen extends StatefulWidget {
 class _ShopResponsesScreenState extends State<ShopResponsesScreen> {
   String? _expandedCardId;
   final Map<String, DateTime> _selectedDates = {};
+  String _searchQuery = '';
 
   Future<void> _startChat(
     BuildContext context,
@@ -82,7 +84,7 @@ class _ShopResponsesScreenState extends State<ShopResponsesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 100), // Header spacing
+        const SizedBox(height: 130), // Header spacing
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
           child: Column(
@@ -95,6 +97,16 @@ class _ShopResponsesScreenState extends State<ShopResponsesScreen> {
                 style: ConsumerTypography.bodyMedium,
               ),
             ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: CustomSearchBar(
+            onSearch: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
           ),
         ),
         Expanded(
@@ -118,20 +130,46 @@ class _ShopResponsesScreenState extends State<ShopResponsesScreen> {
                 return _buildEmptyState();
               }
 
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                itemCount: snapshot.data!.docs.length,
-                itemBuilder: (context, index) {
-                  final doc = snapshot.data!.docs[index];
-                  final data = doc.data() as Map<String, dynamic>;
-                  final docId = doc.id;
-                  final isExpanded = _expandedCardId == docId;
+              final allDocs = snapshot.data!.docs;
+              final filteredDocs = allDocs.where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final query = _searchQuery.toLowerCase();
+                final shopName = (data['shopName'] ?? '')
+                    .toString()
+                    .toLowerCase();
+                final shopAddress = (data['shopAddress'] ?? '')
+                    .toString()
+                    .toLowerCase();
+                return shopName.contains(query) || shopAddress.contains(query);
+              }).toList();
 
-                  return _buildResponseCard(context, data, docId, isExpanded);
-                },
+              return Column(
+                children: [
+                  Expanded(
+                    child: filteredDocs.isEmpty
+                        ? _buildEmptyState(isSearch: _searchQuery.isNotEmpty)
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 16,
+                            ),
+                            itemCount: filteredDocs.length,
+                            itemBuilder: (context, index) {
+                              final doc = filteredDocs[index];
+                              final data = doc.data() as Map<String, dynamic>;
+                              final docId = doc.id;
+                              final isExpanded = _expandedCardId == docId;
+
+                              return _buildResponseCard(
+                                context,
+                                data,
+                                docId,
+                                isExpanded,
+                              );
+                            },
+                          ),
+                  ),
+                ],
               );
             },
           ),
@@ -648,7 +686,7 @@ class _ShopResponsesScreenState extends State<ShopResponsesScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({bool isSearch = false}) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -660,16 +698,19 @@ class _ShopResponsesScreenState extends State<ShopResponsesScreen> {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              LucideIcons.clipboardList,
+              isSearch ? Icons.search_off : LucideIcons.clipboardList,
               size: 48,
               color: ConsumerColor.brand300,
             ),
           ),
           const SizedBox(height: 24),
-          Text('받은 응답이 없습니다.', style: ConsumerTypography.h2),
+          Text(
+            isSearch ? '검색 결과가 없습니다.' : '받은 응답이 없습니다.',
+            style: ConsumerTypography.h2,
+          ),
           const SizedBox(height: 8),
           Text(
-            '정비소에서 견적을 보내면 여기에 표시됩니다.',
+            isSearch ? '다른 검색어를 입력해 보세요.' : '정비소에서 견적을 보내면 여기에 표시됩니다.',
             style: ConsumerTypography.bodyMedium,
           ),
         ],

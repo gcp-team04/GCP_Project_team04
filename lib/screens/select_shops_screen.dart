@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../providers/estimate_provider.dart';
 import '../providers/shop_provider.dart';
 import '../models/service_center.dart';
+import '../widgets/custom_search_bar.dart';
 import '../utils/consumer_design.dart';
 
 class SelectShopsScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class SelectShopsScreen extends StatefulWidget {
 class _SelectShopsScreenState extends State<SelectShopsScreen> {
   final Set<String> _selectedShopIds = {};
   final TextEditingController _shopCountController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void dispose() {
@@ -87,7 +89,12 @@ class _SelectShopsScreenState extends State<SelectShopsScreen> {
   @override
   Widget build(BuildContext context) {
     final shopProvider = context.watch<ShopProvider>();
-    final shops = shopProvider.shops;
+    final allShops = shopProvider.shops;
+    final filteredShops = allShops.where((shop) {
+      final query = _searchQuery.toLowerCase();
+      return shop.name.toLowerCase().contains(query) ||
+          shop.address.toLowerCase().contains(query);
+    }).toList();
 
     return Scaffold(
       backgroundColor: ConsumerColor.brand50,
@@ -111,30 +118,47 @@ class _SelectShopsScreenState extends State<SelectShopsScreen> {
               ),
             ),
           ),
-          const Divider(),
-          Expanded(
-            child: ListView.builder(
-              itemCount: shops.length,
-              itemBuilder: (context, index) {
-                final shop = shops[index];
-                final isSelected = _selectedShopIds.contains(shop.id);
-
-                return CheckboxListTile(
-                  title: Text(shop.name),
-                  subtitle: Text(shop.address),
-                  value: isSelected,
-                  onChanged: (bool? value) {
-                    setState(() {
-                      if (value == true) {
-                        _selectedShopIds.add(shop.id);
-                      } else {
-                        _selectedShopIds.remove(shop.id);
-                      }
-                    });
-                  },
-                );
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: CustomSearchBar(
+              onSearch: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
               },
             ),
+          ),
+          const Divider(),
+          Expanded(
+            child: filteredShops.isEmpty
+                ? const Center(
+                    child: Text(
+                      '검색 결과가 없습니다.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: filteredShops.length,
+                    itemBuilder: (context, index) {
+                      final shop = filteredShops[index];
+                      final isSelected = _selectedShopIds.contains(shop.id);
+
+                      return CheckboxListTile(
+                        title: Text(shop.name),
+                        subtitle: Text(shop.address),
+                        value: isSelected,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              _selectedShopIds.add(shop.id);
+                            } else {
+                              _selectedShopIds.remove(shop.id);
+                            }
+                          });
+                        },
+                      );
+                    },
+                  ),
           ),
         ],
       ),

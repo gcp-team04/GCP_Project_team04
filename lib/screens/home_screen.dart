@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../services/storage_service.dart';
 import '../providers/shop_provider.dart';
 import '../providers/estimate_provider.dart';
+import '../widgets/custom_search_bar.dart';
 import '../utils/consumer_design.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -399,7 +400,15 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20.0),
         child: Column(
           children: [
-            const SizedBox(height: 100),
+            const SizedBox(height: 130),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: CustomSearchBar(
+                onSearch: (value) {
+                  // TODO: 홈 화면 통합 검색 기능 구현
+                },
+              ),
+            ),
             // Hero Section
             Column(
               children: [
