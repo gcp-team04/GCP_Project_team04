@@ -106,6 +106,7 @@ class AuthService {
       String? fcmToken;
       try {
         fcmToken = await FirebaseMessaging.instance.getToken();
+        debugPrint("Fetched FCM Token: $fcmToken"); // 디버깅용 로그 추가
       } catch (e) {
         debugPrint("Error fetching FCM token: $e");
       }

@@ -246,6 +246,7 @@ def send_estimate_notification(cloud_event):
     
     # 2. 해당 정비소에 소속된 유저들(정비사) 찾기
     db = firebase_firestore.client()
+    print(f"Searching for users with serviceCenterId: {shop_id}")
     users_ref = db.collection("users").where("serviceCenterId", "==", shop_id)
     users = users_ref.get()
     
@@ -253,12 +254,18 @@ def send_estimate_notification(cloud_event):
     for user in users:
         user_data = user.to_dict()
         token = user_data.get("fcmToken")
+        email = user_data.get("email", "Unknown")
         if token:
             tokens.append(token)
+            print(f"Found token for user {email}")
+        else:
+            print(f"User {email} has no FCM token")
     
     if not tokens:
-        print(f"No FCM tokens found for shop {shop_id}")
+        print(f"FAILED: No FCM tokens found for shop {shop_id}. Cannot send notification.")
         return
+    
+    print(f"Found {len(tokens)} tokens. Sending multicast message...")
     
     # 3. 알림 발송
     message = messaging.MulticastMessage(
@@ -267,12 +274,17 @@ def send_estimate_notification(cloud_event):
             body="근처에서 새로운 수리 견적 요청이 도착했습니다. 확인해 보세요!",
         ),
         data={
-            "shopId": shop_id,
-            "estimateId": estimate_id,
-            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "type": "new_estimate",
+            "shopId": str(shop_id),
+            "estimateId": str(estimate_id),
         },
         tokens=tokens,
     )
     
     response = messaging.send_multicast(message)
-    print(f"Successfully sent {response.success_count} notifications. Failed: {response.failure_count}")
+    print(f"Multicast sent. Success: {response.success_count}, Failure: {response.failure_count}")
+    
+    if response.failure_count > 0:
+        for index, res in enumerate(response.responses):
+            if not res.success:
+                print(f"Token at index {index} failed: {res.exception}")

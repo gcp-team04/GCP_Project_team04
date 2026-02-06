@@ -167,11 +167,21 @@ class _MainLayoutState extends State<MainLayout> {
 
     // 포그라운드 메시지 리스너 설정
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint("Foreground message received: ${message.notification?.title}");
+      debugPrint("Foreground message received! ID: ${message.messageId}");
+      debugPrint("Message Notification: ${message.notification?.title}");
+      debugPrint("Message Data: ${message.data}");
+
       if (message.notification != null) {
         _showTopNotification(
-          message.notification!.title ?? '알림',
-          message.notification!.body ?? '',
+          message.notification!.title ?? '새로운 견적 요청',
+          message.notification!.body ?? '정비소 확인이 필요합니다.',
+          isMechanic: widget.appUser.role == UserRole.mechanic,
+        );
+      } else if (message.data.isNotEmpty) {
+        // 데이터만 있는 경우에도 알림 표시 시도
+        _showTopNotification(
+          "새로운 알림",
+          "견적 요청 또는 메시지가 도착했습니다.",
           isMechanic: widget.appUser.role == UserRole.mechanic,
         );
       }
