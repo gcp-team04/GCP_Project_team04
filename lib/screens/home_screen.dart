@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -22,6 +23,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String? _imageUrl;
+  XFile? _selectedImage; // [추가] 선택된 이미지 파일
   bool _isAnalyzing = false;
   bool _isUploading = false;
   bool _showPartImage = false; // [추가] 부품 이미지 전환 상태
@@ -224,37 +226,51 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (image != null) {
       setState(() {
-        _isUploading = true;
+        _selectedImage = image;
+        _isUploading = false;
+        _isAnalyzing = false;
         _result = null;
         _imageUrl = null;
-        // [추가] 업로드 시작 시점 기록 (약간의 오차 보정을 위해 5초 정도 뺌)
-        _uploadStartTime = DateTime.now().subtract(const Duration(seconds: 5));
+      });
+    }
+  }
+
+  Future<void> _startAnalysis() async {
+    if (_selectedImage == null) return;
+
+    setState(() {
+      _isUploading = true;
+      _result = null;
+      _imageUrl = null;
+      // [추가] 업로드 시작 시점 기록 (약간의 오차 보정을 위해 5초 정도 뺌)
+      _uploadStartTime = DateTime.now().subtract(const Duration(seconds: 5));
+    });
+
+    // 사진 업로드
+    try {
+      final imageUrl = await _storageService.uploadCrashedCarPicture(
+        _selectedImage!,
+      );
+      if (!mounted) return;
+      _startProgressSimulation();
+      setState(() {
+        _imageUrl = imageUrl;
+        _isUploading = false;
+        _isAnalyzing = true;
       });
 
-      // 사진 업로드
-      try {
-        final imageUrl = await _storageService.uploadCrashedCarPicture(image);
-        if (!mounted) return;
-        _startProgressSimulation();
-        setState(() {
-          _imageUrl = imageUrl;
-          _isUploading = false;
-          _isAnalyzing = true;
-        });
-
-        // Firestore 실시간 리스너 시작
-        _listenForAnalysisResult();
-      } catch (e) {
-        if (!mounted) return;
-        _stopProgressSimulation();
-        setState(() {
-          _isUploading = false;
-          _isAnalyzing = false;
-        });
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('사진 업로드 실패: $e')));
-      }
+      // Firestore 실시간 리스너 시작
+      _listenForAnalysisResult();
+    } catch (e) {
+      if (!mounted) return;
+      _stopProgressSimulation();
+      setState(() {
+        _isUploading = false;
+        _isAnalyzing = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('사진 업로드 실패: $e')));
     }
   }
 
@@ -452,7 +468,16 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             // Upload Card / analyzing / result
-            if (!_isAnalyzing && !_isUploading && _result == null) ...[
+            if (_isUploading || _isAnalyzing) ...[
+              const SizedBox(height: 24),
+              _buildAnalyzingState(),
+            ] else if (_result != null) ...[
+              const SizedBox(height: 24),
+              _buildResultView(),
+            ] else if (_selectedImage != null) ...[
+              // [추가] 분석 전 미리보기 및 시작 버튼 화면
+              _buildReadyToAnalyzeView(),
+            ] else ...[
               // Hero Section
               Column(
                 children: [
@@ -489,12 +514,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               _buildUploadCard(),
-            ] else if (_isUploading || _isAnalyzing) ...[
-              const SizedBox(height: 24),
-              _buildAnalyzingState(),
-            ] else if (_result != null) ...[
-              const SizedBox(height: 24),
-              _buildResultView(),
             ],
 
             const SizedBox(height: 120), // Bottom padding for nav
@@ -580,6 +599,77 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildReadyToAnalyzeView() {
+    return Column(
+      children: [
+        const SizedBox(height: 24),
+        Container(
+          width: double.infinity,
+          height: 300,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: ConsumerColor.slate100),
+            image: DecorationImage(
+              image: FileImage(File(_selectedImage!.path)),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        // [추가] 차량 모델 입력 필드 (기능 없음, UI 전용)
+        TextField(
+          decoration: InputDecoration(
+            hintText: '차량 모델을 입력해주세요 (선택)',
+            filled: true,
+            fillColor: Colors.white,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: ConsumerColor.slate100),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: ConsumerColor.brand500),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 16,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _startAnalysis,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ConsumerColor.brand500,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: const Text(
+              '분석 시작',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: _pickImage,
+          child: Text(
+            '다른 사진 선택하기',
+            style: TextStyle(
+              color: ConsumerColor.slate500,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
