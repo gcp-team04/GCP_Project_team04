@@ -223,3 +223,6 @@ def analyze_crashed_car(cloud_event):
     except Exception as e:
         print(f"Error processing image: {e}")
         raise e
+
+
+#dummy
